@@ -2,88 +2,116 @@
 
 import logging
 import signal
+import os
+
 
 from pyhap.accessory import Accessory
 from pyhap.accessory_driver import AccessoryDriver
-from pyhap.const import CATEGORY_THERMOSTAT
+from pyhap.const import CATEGORY_AIR_CONDITIONER
 
 from aircon import Aircon
+from util import load_state, save_state
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class Airconditioner(Accessory):
     """An AC Accessory"""
-    speed = 0
-    temperature = 23
-    power = False
-    category = CATEGORY_THERMOSTAT
+
+    category = CATEGORY_AIR_CONDITIONER
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.aircon = Aircon()
 
-        # Set up fan service to control on/off/speed
-        service_fan = self.add_preload_service(
-            "Fan", chars=['RotationSpeed', 'On'])
+        service = self.add_preload_service(
+            "HeaterCooler",
+            chars=[
+                "RotationSpeed",
+                "On",
+                "CoolingThresholdTemperature",
+                "HeatingThresholdTemperature",
+                "CurrentTemperature",
+            ],
+        )
+        self.char_rotation_speed = service.configure_char(
+            "RotationSpeed",
+            setter_callback=self.set_fanspeed,
+            getter_callback=self.get_fanspeed,
+            properties={"minStep": 25},
+        )
+        self.char_mode = service.configure_char(
+            "TargetHeaterCoolerState",
+            setter_callback=self.set_mode,
+            getter_callback=self.get_mode,
+        )
 
-        self.char_rotation_speed = service_fan.configure_char('RotationSpeed',
-                                                              setter_callback=self.set_fanspeed,
-                                                              getter_callback=self.get_fanspeed)
-        self.char_on = service_fan.configure_char('On',
-                                                  setter_callback=self.toggle_power,
-                                                  getter_callback=self.get_power)
+        self.char_current_mode = service.get_characteristic("CurrentHeaterCoolerState")
+        self.char_current_mode.set_value(value=0, should_notify=False)
 
-        # Set up target temperature service and default value
-        service_temperature = self.add_preload_service("Thermostat")
+        self.char_on = service.configure_char(
+            "On", setter_callback=self.set_power, getter_callback=self.get_power
+        )
 
-        self.char_target_temp = service_temperature.configure_char('TargetTemperature',
-                                                                   setter_callback=self.set_temp,
-                                                                   getter_callback=self.get_temp)
+        self.char_target_temp = service.configure_char(
+            "CoolingThresholdTemperature",
+            setter_callback=self.set_cool,
+            getter_callback=self.get_temp,
+            properties={"minValue": 18, "maxValue": 24, "stepValue": 1},
+        )
 
-        self.char_current_temp = service_temperature.get_characteristic(
-            'CurrentTemperature')
-        self.char_current_temp.set_value(
-            value=self.temperature, should_notify=False)
+        self.char_target_temp = service.configure_char(
+            "HeatingThresholdTemperature",
+            setter_callback=self.set_heat,
+            getter_callback=self.get_temp,
+            properties={"minValue": 18, "maxValue": 24, "stepValue": 1},
+        )
 
-    def toggle_power(self, value):
-        if value:
-            self.aircon.turn_on()
-            self.power = True
-        else:
-            self.aircon.turn_off()
-            self.power = False
+        self.char_current_temp = service.get_characteristic("CurrentTemperature")
+        self.char_current_temp.set_value(value=self.aircon.temp, should_notify=False)
+
+    def set_power(self, value):
+        print("!!! POWER", value)
+        self.aircon.power = value
 
     def get_power(self):
-        return self.power
+        return self.aircon.power
 
-    def set_temp(self, value):
-        self.char_current_temp.set_value(value=value, should_notify=True)
-        self.temperature = value
+    def set_mode(self, value):
+        print("!!! MODE", value)
+        self.aircon.mode = value
+        self.char_current_mode.set_value(value=self.aircon.mode, should_notify=False)
+
+    def get_mode(self):
+        return self.aircon.mode
+
+    def set_heat(self, value):
+        self.char_current_mode.set_value(value=1, should_notify=False)
+        self.char_current_temp.set_value(value=self.aircon.temp, should_notify=False)
+        self.aircon.temp = value
+
+    def set_cool(self, value):
+        self.char_current_mode.set_value(value=0, should_notify=False)
+        self.char_current_temp.set_value(value=self.aircon.temp, should_notify=False)
+        self.aircon.temp = value
 
     def get_temp(self):
-        return self.temperature
+        return self.aircon.temp
 
     def set_fanspeed(self, value):
-        if value >= 75:
-            speed = 'high'
-        elif value >= 50:
-            speed = 'medium'
-        elif value >= 25:
-            speed = 'low'
-        else:
-            speed = 'quiet'
-        self.speed = value
-        self.aircon.set_speed(speed)
+        print("!!! FANSPEED", value)
+        self.aircon.speed = value
 
     def get_fanspeed(self):
-        return self.speed
+        return self.aircon.speed
 
 
 # Start the accessory on port 51826
 driver = AccessoryDriver(port=51826)
-accessory = Airconditioner(display_name="Airconditioner", driver=driver)
+display_name = os.environ.get("DISPLAY_NAME", "Air Conditioner")
+accessory = Airconditioner(display_name=display_name, driver=driver)
 driver.add_accessory(accessory=accessory)
 
 signal.signal(signal.SIGINT, driver.signal_handler)

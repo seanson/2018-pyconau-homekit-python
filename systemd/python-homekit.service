@@ -1,0 +1,16 @@
+[Unit]
+Description=python-homekit service
+After=network.target
+
+[Service]
+Environment=LC_ALL=C.UTF-8
+Environment=LANG=C.UTF-8
+Environment=PYTHONUNBUFFERED=TRUE
+User=pi
+Restart=always
+Type=simple
+WorkingDirectory=/home/pi/2018_pycon_python_homekit
+ExecStart=/usr/local/bin/pipenv run python3 /home/pi/2018_pycon_python_homekit/src/hap.py
+
+[Install]
+WantedBy=multi-user.target

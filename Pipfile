@@ -7,9 +7,14 @@ name = "pypi"
 pylint = "*"
 "autopep8" = "*"
 "flake8" = "*"
+black = "*"
 
 [packages]
 hap-python = {version = "*", extras = ["qrcode"]}
+future-fstrings = { version = "*", markers = "python_version <= '3.5'" }
 
 [requires]
-python_version = "3.7"
+python_version = "3"
+
+[pipenv]
+allow_prereleases = true

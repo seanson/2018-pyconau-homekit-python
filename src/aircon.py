@@ -1,72 +1,111 @@
-#!/usr/bin/env python
-
 import logging
+import json
+
 from os import environ
 from subprocess import check_output
 from time import sleep
 
+from util import load_state, save_state
+
 logger = logging.getLogger(__name__)
 
-
-def build_command(*args):
-    return '-'.join((str(arg) for arg in args)) + 'C'
+MODES = ["auto", "heat", "cool"]
 
 
-MODES = ['off', 'cool', 'heat', 'fan']
-SPEEDS = ['quiet', 'low', 'medium', 'high']
+def get_speed_name(value):
+    if value >= 75:
+        return "high"
+    elif value >= 50:
+        return "medium"
+    elif value >= 25:
+        return "low"
+    return "quiet"
+
+
+def get_mode_name(value):
+    return MODES[value]
 
 
 class Aircon:
-    history = []
-    temp = '23'
-    mode = 'off'
-    speed = 'medium'
+    """ A class for managing the Airconditioner state and associated
+    LIRC commands """
+
+    MODES = ["off", "cool", "heat", "fan"]
+    SPEEDS = ["quiet", "low", "medium", "high"]
 
     def __init__(self):
-        pass
+        self.state = load_state()
 
-    def _send(self, action):
-        command = [
-            'irsend',
-            'send_once',
-            'fujitsu_heat_ac',
-            action,
-        ]
-        logger.info('Sending action: {}'.format(action))
-        if 'MOCK_IRSEND' in environ:
+    def _update(self, action=None):
+        """ Build and send a LIRC action through check_output. 
+        Supports the environment variable MOCK_IRSEND for testing."""
+        speed = get_speed_name(self.speed)
+        mode = get_mode_name(self.mode)
+        if action is "auto":
+            logger.warning("Auto mode not supported")
             return
-        logger.info(check_output(command))
+        if action is None:
+            action = "{mode}-{speed}-{temp}C".format(
+                mode=mode, speed=speed, temp=int(self.temp)
+            )
 
-    def turn_on(self):
-        if self.mode != 'off':
+        command = ["irsend", "send_once", "fujitsu_heat_ac", action]
+        logger.info("Sending action: {}".format(action))
+        if "MOCK_IRSEND" in environ:
             return
-        self._send('cool-on')
-        self.mode = 'cool'
-        sleep(1)
-        command = build_command(self.mode, self.speed, self.temp)
-        return self._send(command)
+        try:
+            logger.info(check_output(command))
+        except Exception as e:
+            logger.warning("Failed to run command: %s - %s", command, e)
+        save_state(self.state)
+        sleep(0.250)
 
-    def turn_off(self):
-        self._send('turn-off')
-        self.mode = 'off'
+    @property
+    def power(self):
+        return self.state["power"]
 
-    def set_state(self, mode, speed, temp):
-        temp = int(temp)
-        if temp > 30:
-            raise ValueError('Temperature cannot be above 30')
-        if temp < 18:
-            raise ValueError('Temperature cannot be below 18')
-        if mode not in MODES:
-            raise ValueError('Mode {} not found in modes: {}'.format(mode, MODES))
-        if speed not in SPEEDS:
-            raise ValueError('Speed {} not found in speeds: {}'.format(speed, SPEEDS))
-        command = build_command(mode, speed, temp)
-        self._send(command)
-
-    def set_speed(self, speed):
-        if self.mode == 'off':
+    @power.setter
+    def power(self, value):
+        self.state["power"] = value
+        if value:
+            self._update("{mode}-on".format(mode=get_mode_name(self.mode)))
+            self._update()
             return
-        if speed not in SPEEDS:
-            raise ValueError('Speed {} not found in speeds: {}'.format(speed, SPEEDS))
-        command = build_command(self.mode, speed, self.temp)
-        self._send(command)
+        self._update("turn-off")
+
+    @property
+    def mode(self):
+        return self.state["mode"]
+
+    @mode.setter
+    def mode(self, value):
+        print(value, self.power)
+        self.state["mode"] = value
+        if self.power:
+            if value == "off":
+                self.power = False
+                return
+            self._update()
+            return
+        self.power = True
+        self._update()
+
+    @property
+    def temp(self):
+        return self.state["temp"]
+
+    @temp.setter
+    def temp(self, value):
+        self.state["temp"] = value
+        save_state(self.state)
+        self._update()
+
+    @property
+    def speed(self):
+        return self.state["speed"]
+
+    @speed.setter
+    def speed(self, value):
+        self.state["speed"] = value
+        save_state(self.state)
+        self._update()
