@@ -13,11 +13,11 @@ MODES = ["auto", "heat", "cool"]
 
 
 def get_speed_name(value):
-    if value >= 75:
+    if value >= 80:
         return "high"
-    elif value >= 50:
+    elif value >= 60:
         return "medium"
-    elif value >= 25:
+    elif value >= 40:
         return "low"
     return "quiet"
 
@@ -37,7 +37,7 @@ class Aircon:
         self.state = load_state()
 
     def _update(self, action=None):
-        """ Build and send a LIRC action through check_output. 
+        """ Build and send a LIRC action through check_output.
         Supports the environment variable MOCK_IRSEND for testing."""
         speed = get_speed_name(self.speed)
         mode = get_mode_name(self.mode)

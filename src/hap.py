@@ -40,7 +40,7 @@ class Airconditioner(Accessory):
             "RotationSpeed",
             setter_callback=self.set_fanspeed,
             getter_callback=self.get_fanspeed,
-            properties={"minStep": 25},
+            properties={"minStep": 20},
         )
         self.char_mode = service.configure_char(
             "TargetHeaterCoolerState",
