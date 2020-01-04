@@ -9,17 +9,14 @@ from util import load_state, save_state
 
 logger = logging.getLogger(__name__)
 
+SPEEDS = ["off", "quiet", "low", "medium", "high"]
 MODES = ["auto", "heat", "cool"]
+STEP_VALUE = 100 / len(SPEEDS)
 
 
 def get_speed_name(value):
-    if value >= 80:
-        return "high"
-    elif value >= 60:
-        return "medium"
-    elif value >= 40:
-        return "low"
-    return "quiet"
+    # Values are clamped to 20 so we just cover the ranges
+    return SPEEDS[value / STEP_VALUE]
 
 
 def get_mode_name(value):
@@ -31,7 +28,6 @@ class Aircon:
     LIRC commands """
 
     MODES = ["off", "cool", "heat", "fan"]
-    SPEEDS = ["quiet", "low", "medium", "high"]
 
     def __init__(self):
         self.state = load_state()

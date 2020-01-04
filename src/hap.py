@@ -9,11 +9,13 @@ from pyhap.accessory import Accessory
 from pyhap.accessory_driver import AccessoryDriver
 from pyhap.const import CATEGORY_AIR_CONDITIONER
 
-from aircon import Aircon
+from aircon import Aircon, STEP_VALUE
 from util import load_state, save_state
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+aircon = Aircon()
 
 
 class Airconditioner(Accessory):
@@ -23,8 +25,6 @@ class Airconditioner(Accessory):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.aircon = Aircon()
 
         service = self.add_preload_service(
             "HeaterCooler",
@@ -36,11 +36,12 @@ class Airconditioner(Accessory):
                 "CurrentTemperature",
             ],
         )
+
         self.char_rotation_speed = service.configure_char(
             "RotationSpeed",
             setter_callback=self.set_fanspeed,
             getter_callback=self.get_fanspeed,
-            properties={"minStep": 20},
+            properties={"minStep": STEP_VALUE},
         )
         self.char_mode = service.configure_char(
             "TargetHeaterCoolerState",
@@ -70,42 +71,67 @@ class Airconditioner(Accessory):
         )
 
         self.char_current_temp = service.get_characteristic("CurrentTemperature")
-        self.char_current_temp.set_value(value=self.aircon.temp, should_notify=False)
+        self.char_current_temp.set_value(value=aircon.temp, should_notify=False)
 
     def set_power(self, value):
         print("!!! POWER", value)
-        self.aircon.power = value
+        aircon.power = value
 
     def get_power(self):
-        return self.aircon.power
+        return aircon.power
 
     def set_mode(self, value):
         print("!!! MODE", value)
-        self.aircon.mode = value
-        self.char_current_mode.set_value(value=self.aircon.mode, should_notify=False)
+        aircon.mode = value
+        self.char_current_mode.set_value(value=aircon.mode, should_notify=False)
 
     def get_mode(self):
-        return self.aircon.mode
+        return aircon.mode
 
     def set_heat(self, value):
         self.char_current_mode.set_value(value=1, should_notify=False)
-        self.char_current_temp.set_value(value=self.aircon.temp, should_notify=False)
-        self.aircon.temp = value
+        self.char_current_temp.set_value(value=aircon.temp, should_notify=False)
+        aircon.temp = value
 
     def set_cool(self, value):
         self.char_current_mode.set_value(value=0, should_notify=False)
-        self.char_current_temp.set_value(value=self.aircon.temp, should_notify=False)
-        self.aircon.temp = value
+        self.char_current_temp.set_value(value=aircon.temp, should_notify=False)
+        aircon.temp = value
 
     def get_temp(self):
-        return self.aircon.temp
+        return aircon.temp
 
     def set_fanspeed(self, value):
         print("!!! FANSPEED", value)
-        self.aircon.speed = value
+        aircon.speed = value
 
     def get_fanspeed(self):
-        return self.aircon.speed
+        return aircon.speed
+
+
+class AirconFan(Accessory):
+    """ An accessory for driving speed as iOS fan controls are terrible """
+
+    category = CATEGORY_AIR_CONDITIONER
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        service = self.add_preload_service("Fan", chars=["RotationSpeed", "On",],)
+
+        self.char_rotation_speed = service.configure_char(
+            "RotationSpeed",
+            setter_callback=self.set_fanspeed,
+            getter_callback=self.get_fanspeed,
+            properties={"minStep": STEP_VALUE},
+        )
+
+    def set_fanspeed(self, value):
+        print("!!! FANSPEED NEW", value)
+        aircon.speed = value
+
+    def get_fanspeed(self):
+        return aircon.speed
 
 
 # Start the accessory on port 51826
@@ -113,6 +139,9 @@ driver = AccessoryDriver(port=51826)
 display_name = os.environ.get("DISPLAY_NAME", "Air Conditioner")
 accessory = Airconditioner(display_name=display_name, driver=driver)
 driver.add_accessory(accessory=accessory)
+
+accessory2 = AirconFan(display_name="Fanspeed", driver=driver)
+driver.add_accessory(accessory=accessory2)
 
 signal.signal(signal.SIGINT, driver.signal_handler)
 signal.signal(signal.SIGTERM, driver.signal_handler)
