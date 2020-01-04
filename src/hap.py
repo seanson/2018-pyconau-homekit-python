@@ -5,7 +5,7 @@ import signal
 import os
 
 
-from pyhap.accessory import Accessory
+from pyhap.accessory import Accessory, Bridge
 from pyhap.accessory_driver import AccessoryDriver
 from pyhap.const import CATEGORY_AIR_CONDITIONER
 
@@ -147,12 +147,14 @@ class AirconFan(Accessory):
 
 # Start the accessory on port 51826
 driver = AccessoryDriver(port=51826)
-display_name = os.environ.get("DISPLAY_NAME", "Air Conditioner")
-accessory = Airconditioner(display_name=display_name, driver=driver)
-driver.add_accessory(accessory=accessory)
 
-accessory2 = AirconFan(display_name="Fanspeed", driver=driver)
-driver.add_accessory(accessory=accessory2)
+bridge = Bridge(driver, "Bridge")
+
+display_name = os.environ.get("DISPLAY_NAME", "Air Conditioner")
+
+bridge.add_accessory(Airconditioner(display_name=display_name, driver=driver))
+bridge.add_accessory(AirconFan(display_name="Fanspeed", driver=driver))
+driver.add_accessory(accessory=bridge)
 
 signal.signal(signal.SIGINT, driver.signal_handler)
 signal.signal(signal.SIGTERM, driver.signal_handler)

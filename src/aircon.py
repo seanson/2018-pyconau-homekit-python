@@ -16,7 +16,8 @@ STEP_VALUE = 100 / len(SPEEDS)
 
 def get_speed_name(value):
     # Values are clamped to 20 so we just cover the ranges
-    return SPEEDS[int(value / STEP_VALUE)]
+    index = int(value / STEP_VALUE) - 1
+    return SPEEDS[index]
 
 
 def get_mode_name(value):
