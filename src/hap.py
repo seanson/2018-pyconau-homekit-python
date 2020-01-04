@@ -126,12 +126,23 @@ class AirconFan(Accessory):
             properties={"minStep": STEP_VALUE},
         )
 
+        self.char_on = service.configure_char(
+            "On", setter_callback=self.set_power, getter_callback=self.get_power
+        )
+
     def set_fanspeed(self, value):
         print("!!! FANSPEED NEW", value)
         aircon.speed = value
 
     def get_fanspeed(self):
         return aircon.speed
+
+    def set_power(self, value):
+        print("!!! POWER", value)
+        aircon.power = value
+
+    def get_power(self):
+        return aircon.power
 
 
 # Start the accessory on port 51826
