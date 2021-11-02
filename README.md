@@ -36,7 +36,16 @@ Once you've sorted out which GPIO pins on the RasPi you want to use, these need 
 
 `/boot/config.txt`:
 
+Older kernels (Raspbian Stretch):
+
 `dtoverlay=lirc-rpi,gpio_in_pin=23,gpio_out_pin=22`
+
+Newer kernels (Raspbian Buster):
+
+```
+dtoverlay=gpio-ir,gpio_pin=23
+dtoverlay=gpio-ir-tx,gpio_pin=22
+```
 
 `/etc/lirc/lirc_options.conf`:
 

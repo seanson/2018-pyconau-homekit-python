@@ -11,10 +11,10 @@ black = "*"
 
 [packages]
 hap-python = {version = "*", extras = ["qrcode"]}
-future-fstrings = { version = "*", markers = "python_version <= '3.5'" }
+python-zeroconf = { version = "0.36.11" }
 
 [requires]
-python_version = "3"
+python_version = "3.7"
 
 [pipenv]
 allow_prereleases = true

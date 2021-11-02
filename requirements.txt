@@ -16,4 +16,4 @@ PyQRCode==1.2.1
 six==1.11.0
 tlslite-ng==0.7.5
 wrapt==1.10.11
-zeroconf==0.20.0
+zeroconf==0.36.11

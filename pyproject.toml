@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "2018_pycon_python_homekit"
+version = "0.1.0"
+description = ""
+authors = ["Sean Johnson <seanson@users.noreply.github.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+HAP-python = "^4.3.0"
+zeroconf = "^0.36.11"
+cffi = {path = "packages/cffi-1.15.0-cp37-cp37m-linux_armv6l.whl"}
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
