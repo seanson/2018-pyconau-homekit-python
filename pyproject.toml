@@ -9,6 +9,7 @@ python = "^3.7"
 HAP-python = "^4.3.0"
 zeroconf = "^0.36.11"
 cffi = {path = "packages/cffi-1.15.0-cp37-cp37m-linux_armv6l.whl"}
+w1thermsensor = {extras = ["async"], version = "^2.0.0"}
 
 [tool.poetry.dev-dependencies]
 

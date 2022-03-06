@@ -7,10 +7,11 @@ import os
 
 from pyhap.accessory import Accessory, Bridge
 from pyhap.accessory_driver import AccessoryDriver
-from pyhap.const import CATEGORY_AIR_CONDITIONER
+from pyhap.const import CATEGORY_AIR_CONDITIONER, CATEGORY_SENSOR
+from w1thermsensor import W1ThermSensor
 
 from aircon import Aircon, STEP_VALUE
-from util import load_state, save_state
+from util import write_metrics
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -69,9 +70,24 @@ class Airconditioner(Accessory):
             getter_callback=self.get_temp,
             properties={"minValue": 18, "maxValue": 24, "stepValue": 1},
         )
+        self.sensor = W1ThermSensor()
+        self.char_current_temp = service.configure_char("CurrentTemperature")
 
-        self.char_current_temp = service.get_characteristic("CurrentTemperature")
-        self.char_current_temp.set_value(value=aircon.temp, should_notify=False)
+    @Accessory.run_at_interval(5)
+    def run(self):
+        self.temp = self.sensor.get_temperature()
+        print(f"Temp: {self.temp}")
+        self.char_current_temp.set_value(self.temp)
+        metrics = f"""
+# HELP homekit_room_temperature_celcius The temperature of the surrounding room
+# TYPE homekit_room_temperature_celcius gauge
+homekit_room_temperature_celcius {self.temp}
+"""
+        write_metrics("temperature", metrics)
+
+    def get_temp(self):
+        return self.temp
+
 
     def set_power(self, value):
         print("!!! POWER", value)
@@ -145,6 +161,20 @@ class AirconFan(Accessory):
         return aircon.power
 
 
+class AirconTemp(Accessory):
+    """ An accessory for measuring temperature """
+
+    category = CATEGORY_SENSOR
+    temp = 25
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        service = self.add_preload_service("TemperatureSensor")
+
+
+
+
 # Start the accessory on port 51826
 driver = AccessoryDriver(port=51826)
 
@@ -154,6 +184,7 @@ display_name = os.environ.get("DISPLAY_NAME", "Air Conditioner")
 
 bridge.add_accessory(Airconditioner(display_name=display_name, driver=driver))
 bridge.add_accessory(AirconFan(display_name="Fanspeed", driver=driver))
+# bridge.add_accessory(AirconTemp(display_name="Temperature", driver=driver))
 driver.add_accessory(accessory=bridge)
 
 signal.signal(signal.SIGINT, driver.signal_handler)

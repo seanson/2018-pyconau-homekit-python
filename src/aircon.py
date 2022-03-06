@@ -98,6 +98,16 @@ class Aircon:
         self._update()
 
     @property
+    def room_temp(self):
+        return self.state["room_temp"]
+
+    @temp.setter
+    def room_temp(self, value):
+        self.state["room_temp"] = value
+        save_state(self.state)
+        self._update()
+
+    @property
     def speed(self):
         return self.state["speed"]
 

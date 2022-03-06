@@ -30,21 +30,22 @@ def save_state(state, metrics=True):
         logging.info("Could not save state cache .state.json: %s", e)
     if not metrics:
       return
-    if not METRICS_PATH.exists():
-      logging.warn(f"Metrics enabled but {METRICS_PATH} does not exist")
-      return
     metrics = f"""
 # HELP homekit_fan_speed The speed of the air conditioner fan
 # TYPE homekit_fan_speed gauge
-homekit_fan_speed {state['speed']}
+homekit_fan_speed {state['speed'] if state['power'] else "0"}
 # HELP homekit_temperature_celcius The temperature of the air conditioner
 # TYPE homekit_temperature_celcius gauge
-homekit_temperature_celcius {state['temp']}
+homekit_temperature_celcius {state['temp'] if state['power'] else "0"}
 # HELP homekit_power_state The power state of the air conditioner
 # TYPE homekit_power_state gauge
 homekit_power_state {"1" if state['power'] else "0"}
 """
-    with open(METRICS_PATH / "python-homekit.prom", "w") as metrics_file:
+    write_metrics("homekit-python", metrics)
+
+def write_metrics(name, metrics):
+    if not METRICS_PATH.exists():
+      logging.warn(f"Metrics enabled but {METRICS_PATH} does not exist")
+      return
+    with open(METRICS_PATH / f"{name}.prom", "w") as metrics_file:
       metrics_file.write(metrics)
-
-
